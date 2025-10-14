@@ -1,0 +1,20 @@
+[project]
+name = "tttranscriber"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.13.0",
+    "alembic>=1.17.0",
+    "asyncpg>=0.30.0",
+    "faststream>=0.6.0",
+    "granian>=2.5.5",
+    "litestar>=2.18.0",
+    "msgspec>=0.19.0",
+    "mypy>=1.18.2",
+    "pydantic>=2.12.1",
+    "python-dotenv>=1.1.1",
+    "ruff>=0.14.0",
+    "sqlalchemy>=2.0.44",
+]
