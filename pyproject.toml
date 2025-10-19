@@ -19,7 +19,9 @@ dependencies = [
     "sounddevice>=0.5.2",
     "soundfile>=0.13.1",
     "sqlalchemy>=2.0.44",
+    "torch>=2.9.0",
     "transformers>=4.57.1",
+    "unicorn>=2.1.4",
     "vosk>=0.3.45",
 ]
 
