@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vosk Распознавание</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: #f4f7fa;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #1a73e8;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: #444;
+      margin: 1.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Контейнеры для результатов */
+    #results, #mic_result {
+      max-width: 800px;
+      width: 100%;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 1rem;
+      line-height: 1.5;
+      transition: all 0.3s ease;
+      /* Исправления для текста */
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word; /* Исправлено: break-all → break-word */
+      overflow-wrap: break-word; /* Дополнительная поддержка */
+      overflow-x: hidden; /* Убрана горизонтальная прокрутка */
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0; /* Добавлена граница для визуального ограничения */
+    }
+
+    #results pre {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      background: #f9f9f9;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word; /* Исправлено */
+      overflow-wrap: break-word;
+      overflow-x: hidden;
+      border-left: 3px solid #1a73e8;
+    }
+
+    #mic_result {
+      background: #e8f0ff;
+      min-height: 100px;
+      border-left: 3px solid #4285f4;
+    }
+
+    /* Стили для кнопок */
+    button {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background-color 0.3s, transform 0.2s;
+      margin: 0.5rem;
+    }
+
+    button:hover {
+      background-color: #1557b0;
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* Стили для input */
+    input[type="file"] {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      margin: 0.5rem 0;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    /* Контейнер для кнопок */
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      justify-content: center;
+    }
+
+    /* Стили для текстового содержимого */
+    .result-text {
+      width: 100%;
+      hyphens: auto; /* Автоматическое переносы слов */
+      text-align: left;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      h2 {
+        font-size: 1.2rem;
+      }
+
+      button, input[type="file"] {
+        width: 100%;
+        max-width: none;
+      }
+
+      #results, #mic_result {
+        max-width: 100%;
+        max-height: 200px;
+        padding: 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      .button-group {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* Дополнительные стили для очень маленьких экранов */
+    @media (max-width: 400px) {
+      body {
+        padding: 10px;
+      }
+
+      #results, #mic_result {
+        max-height: 150px;
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+  <script>
+    // -------------------- ФАЙЛ --------------------
+    async function uploadFile() {
+      const fileInput = document.getElementById("file");
+      if (!fileInput.files.length) {
+        alert("Пожалуйста, выберите файл");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      try {
+        let res = await fetch("/upload", { method: "POST", body: formData });
+        let data = await res.json();
+
+        // создаём новый блок результата
+        const container = document.getElementById("results");
+        const pre = document.createElement("pre");
+        pre.innerHTML = `<strong>📂 ${fileInput.files[0].name}</strong>\n${data.text}`;
+        container.appendChild(pre);
+
+        // очищаем input
+        fileInput.value = "";
+      } catch (error) {
+        console.error("Ошибка загрузки:", error);
+        alert("Ошибка при загрузке файла");
+      }
+    }
+
+    // -------------------- МИКРОФОН --------------------
+    let micInterval = null;
+
+    async function startMic() {
+      try {
+        await fetch("/start_mic", { method: "POST" });
+        if (micInterval) clearInterval(micInterval);
+        micInterval = setInterval(async () => {
+          try {
+            let res = await fetch("/get_mic");
+            let data = await res.json();
+            document.getElementById("mic_result").innerText = data.text || "🎤 Речь не распознана...";
+          } catch (error) {
+            console.error("Ошибка получения данных с микрофона:", error);
+          }
+        }, 2000);
+      } catch (error) {
+        console.error("Ошибка запуска микрофона:", error);
+        alert("Ошибка запуска микрофона");
+      }
+    }
+
+    async function stopMic() {
+      try {
+        await fetch("/stop_mic", { method: "POST" });
+        if (micInterval) {
+          clearInterval(micInterval);
+          micInterval = null;
+        }
+      } catch (error) {
+        console.error("Ошибка остановки микрофона:", error);
+      }
+    }
+
+    // -------------------- ОЧИСТКА --------------------
+    function clearResults() {
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("mic_result").innerText = "";
+    }
+  </script>
+</head>
+<body>
+  <h1>Vosk Распознавание речи</h1>
+
+  <h2>📂 Транскрипция файла</h2>
+  <div class="button-group">
+    <input type="file" id="file" accept="audio/*">
+    <button onclick="uploadFile()">Загрузить</button>
+    <button onclick="clearResults()">🗑 Очистить результаты</button>
+  </div>
+  <div id="results"></div>
+
+  <h2>🎤 Транскрипция микрофона</h2>
+  <div class="button-group">
+    <button onclick="startMic()">Старт записи</button>
+    <button onclick="stopMic()">⏹ Остановить запись</button>
+  </div>
+  <pre id="mic_result"></pre>
+</body>
+</html>
