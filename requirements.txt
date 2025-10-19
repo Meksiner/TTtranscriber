@@ -1,0 +1,16 @@
+aiohttp
+alembic
+asyncpg
+faststream
+granian
+litestar
+msgspec
+mypy
+pydantic
+python-dotenv
+ruff
+sounddevice
+soundfile
+sqlalchemy
+transformers
+vosk
